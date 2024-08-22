@@ -62,6 +62,48 @@ router.get("/admin_count", (req, res) => {
   });
 });
 
+router.get("/admin/:id", (req, res) => {
+  const sql = "SELECT email FROM admin WHERE id = ?";
+  con.query(sql, [req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.put("/update_admin/:id", (req, res) => {
+  const sql = "UPDATE admin SET email = ? WHERE id = ?";
+  con.query(sql, [req.body.email, req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+  if (!req.body.adminChecked) {
+    const sql = "DELETE  from admin WHERE id = ?";
+    con.query(sql, [req.params.id], (err, result) => {});
+  }
+});
+
+router.delete("/delete_admin/:id", (req, res) => {
+  if (!req.body.isSuperAdmin) {
+    const sql = "DELETE FROM admin WHERE id = (?)";
+    con.query(sql, [req.params.id], (err, result) => {
+      if (err) return res.json({ Status: false, Error: "Query error" });
+      return res.json({ Status: true });
+    });
+  }
+  return res.json({
+    Status: false,
+    Error: "Impossible de supprimer un super Admin",
+  });
+});
+
+router.get("/admin_records", (req, res) => {
+  const sql = "SELECT * FROM admin";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
 router.post("/add_category", (req, res) => {
   /* @TODO: check if category already exists */
   const sql = "INSERT INTO category (`name`) VALUES (?)";
@@ -120,7 +162,8 @@ router.post("/add_employee", upload.single("picture"), (req, res) => {
 });
 
 router.get("/employee", (req, res) => {
-  const sql = "SELECT * from employee";
+  const sql =
+    "SELECT employee.*, category.name AS category_name from employee INNER JOIN category ON employee.category_id = category.id";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
