@@ -70,6 +70,7 @@ router.post("/update_category", (req, res) => {
     return res.json({ Status: true });
   });
 });
+
 router.post("/remove_category", (req, res) => {
   const sql = "DELETE FROM category WHERE id = (?)";
   con.query(sql, [req.body.id], (err, result) => {
@@ -101,7 +102,7 @@ router.post("/add_employee", upload.single("picture"), (req, res) => {
       req.body.salary,
       req.body.address,
       req.body.category,
-      req.file.filename,
+      req.file ? req.file.filename : "",
     ];
     con.query(sql, [params], (err, result) => {
       if (err) return res.json({ Status: false, Error: err });
@@ -123,6 +124,31 @@ router.get("/employee/:id", (req, res) => {
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
+  });
+});
+
+router.put("/update_employee/:id", (req, res) => {
+  const values = [
+    req.body.firstName,
+    req.body.lastName,
+    req.body.email,
+    req.body.salary,
+    req.body.address,
+    req.body.category,
+  ];
+  const sql =
+    "UPDATE employee SET firstName = ?, lastName = ?,email = ?,salary = ?,address = ?,category_id = ? WHERE id = ?";
+  con.query(sql, [...values, req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
+
+router.post("/remove_employee/", (req, res) => {
+  const sql = "DELETE FROM employee WHERE id = (?)";
+  con.query(sql, [req.body.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true });
   });
 });
 
