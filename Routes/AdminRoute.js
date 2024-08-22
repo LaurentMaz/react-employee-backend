@@ -1,8 +1,35 @@
 import express from "express";
 import con from "../utils/db.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import multer from "multer";
+import path from "path";
 
 const router = express.Router();
+
+// Image Upload System
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/images");
+  },
+  filename: (req, file, cb) => {
+    const fileNameWithoutExt = path.basename(
+      file.originalname,
+      path.extname(file.originalname)
+    );
+
+    cb(
+      null,
+      fileNameWithoutExt + "_" + Date.now() + path.extname(file.originalname)
+    );
+  },
+});
+
+const upload = multer({
+  storage: storage,
+});
+// End Image Upload System
 
 router.post("/adminlogin", (req, res) => {
   const sql = "SELECT * FROM admin WHERE email = ? AND password = ?";
@@ -54,6 +81,46 @@ router.post("/remove_category", (req, res) => {
 router.get("/category", (req, res) => {
   const sql = "SELECT * FROM category";
   con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.post("/add_employee", upload.single("picture"), (req, res) => {
+  /* @TODO: check if employee already exists */
+  /* @TODO: security checks */
+  const sql =
+    "INSERT INTO employee (`lastName`, `firstName`, `email`, `password`, `salary`, `address`, `category_id`, `picture`) VALUES (?)";
+  bcrypt.hash(req.body.password.toString(), 10, (err, hash) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    const params = [
+      req.body.lastName,
+      req.body.firstName,
+      req.body.email,
+      hash,
+      req.body.salary,
+      req.body.address,
+      req.body.category,
+      req.file.filename,
+    ];
+    con.query(sql, [params], (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    });
+  });
+});
+
+router.get("/employee", (req, res) => {
+  const sql = "SELECT * from employee";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/employee/:id", (req, res) => {
+  const sql = "SELECT * from employee WHERE id = (?)";
+  con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
   });
