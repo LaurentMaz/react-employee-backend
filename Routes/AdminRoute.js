@@ -54,6 +54,14 @@ router.post("/adminlogin", (req, res) => {
   });
 });
 
+router.get("/admin_count", (req, res) => {
+  const sql = "SELECT count(id) as admin FROM admin";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
 router.post("/add_category", (req, res) => {
   /* @TODO: check if category already exists */
   const sql = "INSERT INTO category (`name`) VALUES (?)";
@@ -119,6 +127,22 @@ router.get("/employee", (req, res) => {
   });
 });
 
+router.get("/employee_count", (req, res) => {
+  const sql = "SELECT count(id) as employee FROM employee";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/salary_count", (req, res) => {
+  const sql = "SELECT sum(salary) as salary FROM employee";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
 router.get("/employee/:id", (req, res) => {
   const sql = "SELECT * from employee WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
@@ -144,9 +168,9 @@ router.put("/update_employee/:id", (req, res) => {
   });
 });
 
-router.post("/remove_employee/", (req, res) => {
+router.delete("/remove_employee/:id", (req, res) => {
   const sql = "DELETE FROM employee WHERE id = (?)";
-  con.query(sql, [req.body.id], (err, result) => {
+  con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true });
   });
