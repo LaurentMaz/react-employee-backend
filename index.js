@@ -20,8 +20,7 @@ app.use("/employee", employeeRouter);
 app.use(express.static("public"));
 
 const verifyUser = (req, res, next) => {
-  const token = req.cookies.token;
-  console.log("Token from cookies: ", token); // Debugging
+  const token = req.cookies.token; // Debugging
   if (!token) return res.json({ Status: false, Error: "Non authentifié" });
   if (token) {
     jwt.verify(token, "jwt_secret_key", (err, decoded) => {

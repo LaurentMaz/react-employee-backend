@@ -68,6 +68,16 @@ router.get("/detail/:id", verifyUser, (req, res) => {
   });
 });
 
+router.get("/detail", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId; // ID récupéré du token après authentification
+
+  const sql = "SELECT * FROM employee WHERE id = ?";
+  con.query(sql, [userIdFromToken], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result[0] });
+  });
+});
+
 router.get("/logout", (req, res) => {
   res.clearCookie("token");
   return res.json({ Status: true });
