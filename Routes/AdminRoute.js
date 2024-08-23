@@ -43,7 +43,7 @@ router.post("/adminlogin", (req, res) => {
           role: "admin",
           email: email,
         },
-        "jwt_secret_key",
+        "jwt_secret_key", // ADD TO ENV SECRET KEY !!
         { expiresIn: "1d" }
       );
       res.cookie("token", token);
@@ -52,6 +52,11 @@ router.post("/adminlogin", (req, res) => {
       return res.json({ loginStatus: false, Error: "Identifiants inconnus" });
     }
   });
+});
+
+router.get("/logout", (req, res) => {
+  res.clearCookie("token");
+  return res.json({ Status: true });
 });
 
 router.get("/admin_count", (req, res) => {
@@ -63,7 +68,7 @@ router.get("/admin_count", (req, res) => {
 });
 
 router.get("/admin/:id", (req, res) => {
-  const sql = "SELECT email FROM admin WHERE id = ?";
+  const sql = "SELECT email, isSuperAdmin FROM admin WHERE id = ?";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
