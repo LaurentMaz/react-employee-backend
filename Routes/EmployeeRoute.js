@@ -5,6 +5,20 @@ import bcrypt from "bcrypt";
 
 const router = express.Router();
 
+// Middleware
+const verifyUser = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token)
+    return res.status(401).json({ Status: false, Error: "Non authentifié" });
+
+  jwt.verify(token, "jwt_secret_key", (err, decoded) => {
+    if (err)
+      return res.status(403).json({ Status: false, Error: "Token invalide" });
+    req.userId = decoded.id; // L'utilisateur authentifié
+    next();
+  });
+};
+
 router.post("/employeelogin", (req, res) => {
   const sql = "SELECT id, email, password FROM employee WHERE email = ?";
   con.query(sql, [req.body.email], (err, result) => {
@@ -18,12 +32,14 @@ router.post("/employeelogin", (req, res) => {
           });
         if (response) {
           const email = result[0].email;
+          const id = result[0].id;
           const token = jwt.sign(
             {
               role: "employee",
               email: email,
+              id: id,
             },
-            "employee_secret_key", // ADD TO ENV SECRET KEY !!
+            "jwt_secret_key", // ADD TO ENV SECRET KEY !!
             { expiresIn: "1d" }
           );
           res.cookie("token", token);
@@ -36,7 +52,15 @@ router.post("/employeelogin", (req, res) => {
   });
 });
 
-router.get("/detail/:id", (req, res) => {
+router.get("/detail/:id", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId; // ID récupéré du token après authentification
+  const userIdFromParams = parseInt(req.params.id, 10); // ID dans l'URL
+
+  // Vérifiez si l'utilisateur authentifié tente d'accéder à ses propres données
+  if (userIdFromToken !== userIdFromParams) {
+    return res.json({ Status: false, Error: "Accès interdit" });
+  }
+
   const sql = "SELECT * FROM employee WHERE id = ?";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: err });

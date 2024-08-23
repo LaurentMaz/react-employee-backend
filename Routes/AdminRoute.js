@@ -38,10 +38,12 @@ router.post("/adminlogin", (req, res) => {
     if (err) return res.json({ loginStatus: false, Error: "Query error" });
     if (result.length > 0) {
       const email = result[0].email;
+      const id = result[0].id;
       const token = jwt.sign(
         {
           role: "admin",
           email: email,
+          id: id,
         },
         "jwt_secret_key", // ADD TO ENV SECRET KEY !!
         { expiresIn: "1d" }
