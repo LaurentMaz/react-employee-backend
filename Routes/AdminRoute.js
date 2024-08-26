@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
+import { verifyUser } from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
@@ -69,6 +70,15 @@ router.get("/admin_count", (req, res) => {
   });
 });
 
+router.get("/currentAdmin", verifyUser, (req, res) => {
+  const sql = "SELECT * FROM admin where id = ?";
+  const userIdFromToken = req.userId;
+  con.query(sql, [userIdFromToken], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result[0] });
+  });
+});
+
 router.get("/admin/:id", (req, res) => {
   const sql = "SELECT email, isSuperAdmin FROM admin WHERE id = ?";
   con.query(sql, [req.params.id], (err, result) => {
@@ -78,15 +88,15 @@ router.get("/admin/:id", (req, res) => {
 });
 
 router.put("/update_admin/:id", (req, res) => {
-  const sql = "UPDATE admin SET email = ? WHERE id = ?";
-  con.query(sql, [req.body.email, req.params.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: err });
-    return res.json({ Status: true });
-  });
-  if (!req.body.adminChecked) {
-    const sql = "DELETE  from admin WHERE id = ?";
-    con.query(sql, [req.params.id], (err, result) => {});
-  }
+  const sql = "UPDATE admin SET email = ?, isSuperAdmin = ? WHERE id = ?";
+  con.query(
+    sql,
+    [req.body.email, req.body.adminChecked, req.params.id],
+    (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    }
+  );
 });
 
 router.delete("/delete_admin/:id", (req, res) => {

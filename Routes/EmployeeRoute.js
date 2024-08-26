@@ -2,22 +2,9 @@ import express from "express";
 import con from "../utils/db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { verifyUser } from "../utils/authMiddleware.js";
 
 const router = express.Router();
-
-// Middleware
-const verifyUser = (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token)
-    return res.status(401).json({ Status: false, Error: "Non authentifié" });
-
-  jwt.verify(token, "jwt_secret_key", (err, decoded) => {
-    if (err)
-      return res.status(403).json({ Status: false, Error: "Token invalide" });
-    req.userId = decoded.id; // L'utilisateur authentifié
-    next();
-  });
-};
 
 router.post("/employeelogin", (req, res) => {
   const sql = "SELECT id, email, password FROM employee WHERE email = ?";
