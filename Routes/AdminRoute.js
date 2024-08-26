@@ -33,24 +33,33 @@ const upload = multer({
 // End Image Upload System
 
 router.post("/adminlogin", (req, res) => {
-  const sql = "SELECT * FROM admin WHERE email = ? AND password = ?";
+  const sql = "SELECT * FROM admin WHERE email = ?";
 
   con.query(sql, [req.body.email, req.body.password], (err, result) => {
     if (err) return res.json({ loginStatus: false, Error: "Query error" });
     if (result.length > 0) {
-      const email = result[0].email;
-      const id = result[0].id;
-      const token = jwt.sign(
-        {
-          role: "admin",
-          email: email,
-          id: id,
-        },
-        "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-        { expiresIn: "1d" }
-      );
-      res.cookie("token", token);
-      return res.json({ loginStatus: true });
+      bcrypt.compare(req.body.password, result[0].password, (err, response) => {
+        if (err)
+          return res.json({
+            loginStatus: false,
+            Error: "Mauvais mot de passe",
+          });
+        if (response) {
+          const email = result[0].email;
+          const id = result[0].id;
+          const token = jwt.sign(
+            {
+              role: "admin",
+              email: email,
+              id: id,
+            },
+            "jwt_secret_key", // ADD TO ENV SECRET KEY !!
+            { expiresIn: "1d" }
+          );
+          res.cookie("token", token);
+          return res.json({ loginStatus: true, id: result[0].id });
+        }
+      });
     } else {
       return res.json({ loginStatus: false, Error: "Identifiants inconnus" });
     }
@@ -87,16 +96,23 @@ router.get("/admin/:id", (req, res) => {
   });
 });
 
-router.put("/update_admin/:id", (req, res) => {
-  const sql = "UPDATE admin SET email = ?, isSuperAdmin = ? WHERE id = ?";
-  con.query(
-    sql,
-    [req.body.email, req.body.adminChecked, req.params.id],
-    (err, result) => {
-      if (err) return res.json({ Status: false, Error: err });
-      return res.json({ Status: true });
-    }
-  );
+router.put("/update_admin/:id", async (req, res) => {
+  let sql = "UPDATE admin SET email = ?, isSuperAdmin = ?";
+  const values = [req.body.email, req.body.adminChecked];
+
+  // Si le mot de passe n'est pas vide, on l'ajoute à la requête
+  if (req.body.password && req.body.password.trim() !== "") {
+    const hash = await bcrypt.hash(req.body.password.toString(), 10);
+    sql += ", password = ?";
+    values.push(hash);
+  }
+
+  // Ajout de la condition WHERE pour l'ID
+  sql += " WHERE id = ?";
+  con.query(sql, [...values, req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
 });
 
 router.delete("/delete_admin/:id", (req, res) => {
@@ -211,7 +227,7 @@ router.get("/employee/:id", (req, res) => {
   });
 });
 
-router.put("/update_employee/:id", (req, res) => {
+router.put("/update_employee/:id", async (req, res) => {
   const values = [
     req.body.firstName,
     req.body.lastName,
@@ -225,28 +241,17 @@ router.put("/update_employee/:id", (req, res) => {
 
   // Si le mot de passe n'est pas vide, on l'ajoute à la requête
   if (req.body.password && req.body.password.trim() !== "") {
+    const hash = await bcrypt.hash(req.body.password.toString(), 10);
     sql += ", password = ?";
-    values.push(req.body.password);
-    bcrypt.hash(req.body.password.toString(), 10, (err, hash) => {
-      if (err) return res.json({ Status: false, Error: "Query error" });
-      const values = [
-        req.body.firstName,
-        req.body.lastName,
-        req.body.email,
-        req.body.salary,
-        req.body.address,
-        req.body.category,
-        hash,
-      ];
-
-      // Ajout de la condition WHERE pour l'ID
-      sql += " WHERE id = ?";
-      con.query(sql, [...values, req.params.id], (err, result) => {
-        if (err) return res.json({ Status: false, Error: err });
-        return res.json({ Status: true });
-      });
-    });
+    values.push(hash);
   }
+  // Ajout de la condition WHERE pour l'ID
+  sql += " WHERE id = ?";
+
+  con.query(sql, [...values, req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
 });
 
 router.delete("/remove_employee/:id", (req, res) => {
