@@ -220,12 +220,33 @@ router.put("/update_employee/:id", (req, res) => {
     req.body.address,
     req.body.category,
   ];
-  const sql =
-    "UPDATE employee SET firstName = ?, lastName = ?,email = ?,salary = ?,address = ?,category_id = ? WHERE id = ?";
-  con.query(sql, [...values, req.params.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: err });
-    return res.json({ Status: true });
-  });
+  let sql =
+    "UPDATE employee SET firstName = ?, lastName = ?,email = ?,salary = ?,address = ?,category_id = ?";
+
+  // Si le mot de passe n'est pas vide, on l'ajoute à la requête
+  if (req.body.password && req.body.password.trim() !== "") {
+    sql += ", password = ?";
+    values.push(req.body.password);
+    bcrypt.hash(req.body.password.toString(), 10, (err, hash) => {
+      if (err) return res.json({ Status: false, Error: "Query error" });
+      const values = [
+        req.body.firstName,
+        req.body.lastName,
+        req.body.email,
+        req.body.salary,
+        req.body.address,
+        req.body.category,
+        hash,
+      ];
+
+      // Ajout de la condition WHERE pour l'ID
+      sql += " WHERE id = ?";
+      con.query(sql, [...values, req.params.id], (err, result) => {
+        if (err) return res.json({ Status: false, Error: err });
+        return res.json({ Status: true });
+      });
+    });
+  }
 });
 
 router.delete("/remove_employee/:id", (req, res) => {

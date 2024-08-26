@@ -39,22 +39,6 @@ router.post("/employeelogin", (req, res) => {
   });
 });
 
-// router.get("/detail/:id", verifyUser, (req, res) => {
-//   const userIdFromToken = req.userId; // ID récupéré du token après authentification
-//   const userIdFromParams = parseInt(req.params.id, 10); // ID dans l'URL
-
-//   // Vérifiez si l'utilisateur authentifié tente d'accéder à ses propres données
-//   if (userIdFromToken !== userIdFromParams) {
-//     return res.json({ Status: false, Error: "Accès interdit" });
-//   }
-
-//   const sql = "SELECT * FROM employee WHERE id = ?";
-//   con.query(sql, [req.params.id], (err, result) => {
-//     if (err) return res.json({ Status: false, Error: err });
-//     return res.json({ Status: true, Result: result[0] });
-//   });
-// });
-
 router.get("/detail", verifyUser, (req, res) => {
   const userIdFromToken = req.userId; // ID récupéré du token après authentification
 
