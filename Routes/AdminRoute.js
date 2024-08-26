@@ -117,15 +117,44 @@ router.put("/update_admin/:id", async (req, res) => {
 
 router.delete("/delete_admin/:id", (req, res) => {
   if (!req.body.isSuperAdmin) {
-    const sql = "DELETE FROM admin WHERE id = (?)";
-    con.query(sql, [req.params.id], (err, result) => {
+    const sqlDeleteAdmin = "DELETE FROM admin WHERE id = (?)";
+    const sqlupdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+    con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
       if (err) return res.json({ Status: false, Error: "Query error" });
+      con.query(sqlupdateEmployee, [0, req.body.email], (err, result) => {
+        if (err) return res.json({ Status: false, Error: "Query error" });
+      });
       return res.json({ Status: true });
     });
+  } else {
+    return res.json({
+      Status: false,
+      Error: "Impossible de supprimer un super Admin",
+    });
   }
-  return res.json({
-    Status: false,
-    Error: "Impossible de supprimer un super Admin",
+});
+
+router.post("/add_admin", (req, res) => {
+  const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
+  const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+  con.query(sqlAddAdmin, [req.body.email, req.body.password], (err, result) => {
+    if (err) {
+      return res.json({
+        Status: false,
+        Error: "Query error during admin insertion",
+      });
+    }
+    con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
+      if (err) {
+        return res.json({
+          Status: false,
+          Error: "Query error during employee update",
+        });
+      }
+      return res.json({ Status: true });
+    });
   });
 });
 
@@ -199,6 +228,14 @@ router.get("/employee", (req, res) => {
     "SELECT employee.*, category.name AS category_name from employee INNER JOIN category ON employee.category_id = category.id";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/employeesNoAdmin", (req, res) => {
+  const sql = "SELECT * from employee WHERE isAdmin = ? ORDER BY lastName ASC";
+  con.query(sql, [0], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
   });
 });
