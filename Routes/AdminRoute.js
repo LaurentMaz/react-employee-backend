@@ -116,47 +116,145 @@ router.put("/update_admin/:id", async (req, res) => {
 });
 
 router.delete("/delete_admin/:id", (req, res) => {
-  if (!req.body.isSuperAdmin) {
-    const sqlDeleteAdmin = "DELETE FROM admin WHERE id = (?)";
-    const sqlupdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
-
-    con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
-      if (err) return res.json({ Status: false, Error: "Query error" });
-      con.query(sqlupdateEmployee, [0, req.body.email], (err, result) => {
-        if (err) return res.json({ Status: false, Error: "Query error" });
-      });
-      return res.json({ Status: true });
-    });
-  } else {
+  // Vérifiez si l'utilisateur est un super administrateur
+  if (req.body.isSuperAdmin) {
     return res.json({
       Status: false,
       Error: "Impossible de supprimer un super Admin",
     });
   }
-});
 
-router.post("/add_admin", (req, res) => {
-  const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
-  const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+  // Commencez une transaction
+  con.beginTransaction((err) => {
+    if (err)
+      return res.json({ Status: false, Error: "Transaction start error" });
 
-  con.query(sqlAddAdmin, [req.body.email, req.body.password], (err, result) => {
-    if (err) {
-      return res.json({
-        Status: false,
-        Error: "Query error during admin insertion",
-      });
-    }
-    con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
+    const sqlDeleteAdmin = "DELETE FROM admin WHERE id = ?";
+    const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+    // Supprimez l'administrateur
+    con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
       if (err) {
-        return res.json({
-          Status: false,
-          Error: "Query error during employee update",
+        return con.rollback(() => {
+          res.json({ Status: false, Error: "Query error for deleting admin" });
         });
       }
-      return res.json({ Status: true });
+
+      // Mettez à jour l'employé
+      con.query(sqlUpdateEmployee, [0, req.body.email], (err, result) => {
+        if (err) {
+          return con.rollback(() => {
+            res.json({
+              Status: false,
+              Error: "Query error for updating employee",
+            });
+          });
+        }
+
+        // Validez la transaction
+        con.commit((err) => {
+          if (err) {
+            return con.rollback(() => {
+              res.json({ Status: false, Error: "Transaction commit error" });
+            });
+          }
+
+          // Transaction réussie
+          res.json({ Status: true });
+        });
+      });
     });
   });
 });
+
+// router.delete("/delete_admin/:id", (req, res) => {
+//   if (!req.body.isSuperAdmin) {
+//     const sqlDeleteAdmin = "DELETE FROM admin WHERE id = (?)";
+//     const sqlupdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+//     con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
+//       if (err) return res.json({ Status: false, Error: "Query error" });
+//       con.query(sqlupdateEmployee, [0, req.body.email], (err, result) => {
+//         if (err) return res.json({ Status: false, Error: "Query error" });
+//       });
+//       return res.json({ Status: true });
+//     });
+//   } else {
+//     return res.json({
+//       Status: false,
+//       Error: "Impossible de supprimer un super Admin",
+//     });
+//   }
+// });
+
+router.post("/add_admin", (req, res) => {
+  // SQL TRANSACTION
+  con.beginTransaction((err) => {
+    if (err)
+      return res.json({ Status: false, Error: "Transaction start error" });
+
+    const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
+    const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+    con.query(
+      sqlAddAdmin,
+      [req.body.email, req.body.password],
+      (err, result) => {
+        if (err) {
+          return con.rollback(() => {
+            res.json({ Status: false, Error: "Query error for adding admin" });
+          });
+        }
+
+        con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
+          if (err) {
+            return con.rollback(() => {
+              res.json({
+                Status: false,
+                Error: "Query error for updating employee",
+              });
+            });
+          }
+          con.commit((err) => {
+            if (err) {
+              return con.rollback(() => {
+                res.json({ Status: false, Error: "Transaction commit error" });
+              });
+            }
+
+            res.json({
+              Status: true,
+              Message: "Admin added and employee updated",
+            });
+          });
+        });
+      }
+    );
+  });
+});
+
+// router.post("/add_admin", (req, res) => {
+//   const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
+//   const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
+
+//   con.query(sqlAddAdmin, [req.body.email, req.body.password], (err, result) => {
+//     if (err) {
+//       return res.json({
+//         Status: false,
+//         Error: "Query error during admin insertion",
+//       });
+//     }
+//     con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
+//       if (err) {
+//         return res.json({
+//           Status: false,
+//           Error: "Query error during employee update",
+//         });
+//       }
+//       return res.json({ Status: true });
+//     });
+//   });
+// });
 
 router.get("/admin_records", (req, res) => {
   const sql = "SELECT * FROM admin";
