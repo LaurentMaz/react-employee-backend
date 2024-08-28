@@ -31,6 +31,11 @@ router.post("/employeelogin", (req, res) => {
           );
           res.cookie("token", token);
           return res.json({ loginStatus: true, id: result[0].id });
+        } else {
+          return res.json({
+            loginStatus: false,
+            Error: "Mot de passe invalide",
+          });
         }
       });
     } else {

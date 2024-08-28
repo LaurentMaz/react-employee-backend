@@ -42,7 +42,7 @@ router.post("/adminlogin", (req, res) => {
         if (err)
           return res.json({
             loginStatus: false,
-            Error: "Mauvais mot de passe",
+            Error: "Bcrypt error",
           });
         if (response) {
           const email = result[0].email;
@@ -56,8 +56,14 @@ router.post("/adminlogin", (req, res) => {
             "jwt_secret_key", // ADD TO ENV SECRET KEY !!
             { expiresIn: "1d" }
           );
+
           res.cookie("token", token);
           return res.json({ loginStatus: true, id: result[0].id });
+        } else {
+          return res.json({
+            loginStatus: false,
+            Error: "Mot de passe invalide",
+          });
         }
       });
     } else {
