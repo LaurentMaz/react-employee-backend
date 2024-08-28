@@ -33,39 +33,47 @@ const upload = multer({
 // End Image Upload System
 
 router.post("/adminlogin", (req, res) => {
-  const sql = "SELECT * FROM admin WHERE email = ?";
+  const sql = "SELECT * FROM employee WHERE email = ?";
 
   con.query(sql, [req.body.email, req.body.password], (err, result) => {
     if (err) return res.json({ loginStatus: false, Error: "Query error" });
     if (result.length > 0) {
-      bcrypt.compare(req.body.password, result[0].password, (err, response) => {
-        if (err)
-          return res.json({
-            loginStatus: false,
-            Error: "Bcrypt error",
-          });
-        if (response) {
-          const email = result[0].email;
-          const id = result[0].id;
-          const token = jwt.sign(
-            {
-              role: "admin",
-              email: email,
-              id: id,
-            },
-            "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-            { expiresIn: "1d" }
-          );
+      if (result[0].isAdmin) {
+        bcrypt.compare(
+          req.body.password,
+          result[0].password,
+          (err, response) => {
+            if (err)
+              return res.json({
+                loginStatus: false,
+                Error: "Bcrypt error",
+              });
+            if (response) {
+              const email = result[0].email;
+              const id = result[0].id;
+              const token = jwt.sign(
+                {
+                  role: "admin",
+                  email: email,
+                  id: id,
+                },
+                "jwt_secret_key", // ADD TO ENV SECRET KEY !!
+                { expiresIn: "1d" }
+              );
 
-          res.cookie("token", token);
-          return res.json({ loginStatus: true, id: result[0].id });
-        } else {
-          return res.json({
-            loginStatus: false,
-            Error: "Mot de passe invalide",
-          });
-        }
-      });
+              res.cookie("token", token);
+              return res.json({ loginStatus: true, id: result[0].id });
+            } else {
+              return res.json({
+                loginStatus: false,
+                Error: "Mot de passe invalide",
+              });
+            }
+          }
+        );
+      } else {
+        return res.json({ loginStatus: false, Error: "Compte non autorisé" });
+      }
     } else {
       return res.json({ loginStatus: false, Error: "Identifiants inconnus" });
     }
@@ -78,24 +86,24 @@ router.get("/logout", (req, res) => {
 });
 
 router.get("/admin_count", (req, res) => {
-  const sql = "SELECT count(id) as admin FROM admin";
-  con.query(sql, (err, result) => {
+  const sql = "SELECT count(id) as admin FROM employee WHERE isAdmin = ?";
+  con.query(sql, [true], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
   });
 });
 
 router.get("/currentAdmin", verifyUser, (req, res) => {
-  const sql = "SELECT * FROM admin where id = ?";
+  const sql = "SELECT * FROM employee where id = ? AND isAdmin = ?";
   const userIdFromToken = req.userId;
-  con.query(sql, [userIdFromToken], (err, result) => {
+  con.query(sql, [userIdFromToken, true], (err, result) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result[0] });
   });
 });
 
 router.get("/admin/:id", (req, res) => {
-  const sql = "SELECT email, isSuperAdmin FROM admin WHERE id = ?";
+  const sql = "SELECT email, isSuperAdmin FROM employee WHERE id = ?";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
@@ -103,7 +111,7 @@ router.get("/admin/:id", (req, res) => {
 });
 
 router.put("/update_admin/:id", async (req, res) => {
-  let sql = "UPDATE admin SET email = ?, isSuperAdmin = ?";
+  let sql = "UPDATE employee SET email = ?, isSuperAdmin = ?";
   const values = [req.body.email, req.body.adminChecked];
 
   // Si le mot de passe n'est pas vide, on l'ajoute à la requête
@@ -121,7 +129,7 @@ router.put("/update_admin/:id", async (req, res) => {
   });
 });
 
-router.delete("/delete_admin/:id", (req, res) => {
+router.put("/delete_admin/:id", (req, res) => {
   // Vérifiez si l'utilisateur est un super administrateur
   if (req.body.isSuperAdmin) {
     return res.json({
@@ -129,47 +137,16 @@ router.delete("/delete_admin/:id", (req, res) => {
       Error: "Impossible de supprimer un super Admin",
     });
   }
-
-  // Commencez une transaction
-  con.beginTransaction((err) => {
-    if (err)
-      return res.json({ Status: false, Error: "Transaction start error" });
-
-    const sqlDeleteAdmin = "DELETE FROM admin WHERE id = ?";
-    const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
-
-    // Supprimez l'administrateur
-    con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
-      if (err) {
-        return con.rollback(() => {
-          res.json({ Status: false, Error: "Query error for deleting admin" });
-        });
-      }
-
-      // Mettez à jour l'employé
-      con.query(sqlUpdateEmployee, [0, req.body.email], (err, result) => {
-        if (err) {
-          return con.rollback(() => {
-            res.json({
-              Status: false,
-              Error: "Query error for updating employee",
-            });
-          });
-        }
-
-        // Validez la transaction
-        con.commit((err) => {
-          if (err) {
-            return con.rollback(() => {
-              res.json({ Status: false, Error: "Transaction commit error" });
-            });
-          }
-
-          // Transaction réussie
-          res.json({ Status: true });
-        });
+  const sql = "UPDATE employee SET isAdmin = ? WHERE id = ?";
+  // Supprimez l'administrateur
+  con.query(sql, [false, req.params.id], (err, result) => {
+    if (err) {
+      return con.rollback(() => {
+        res.json({ Status: false, Error: "Query error for deleting admin" });
       });
-    });
+    }
+    // Transaction réussie
+    res.json({ Status: true });
   });
 });
 
@@ -193,49 +170,14 @@ router.delete("/delete_admin/:id", (req, res) => {
 //   }
 // });
 
-router.post("/add_admin", (req, res) => {
-  // SQL TRANSACTION
-  con.beginTransaction((err) => {
-    if (err)
-      return res.json({ Status: false, Error: "Transaction start error" });
+router.put("/add_admin", (req, res) => {
+  const sql = "UPDATE employee SET isAdmin = ? WHERE email = ?";
 
-    const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
-    const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
-
-    con.query(
-      sqlAddAdmin,
-      [req.body.email, req.body.password],
-      (err, result) => {
-        if (err) {
-          return con.rollback(() => {
-            res.json({ Status: false, Error: "Query error for adding admin" });
-          });
-        }
-
-        con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
-          if (err) {
-            return con.rollback(() => {
-              res.json({
-                Status: false,
-                Error: "Query error for updating employee",
-              });
-            });
-          }
-          con.commit((err) => {
-            if (err) {
-              return con.rollback(() => {
-                res.json({ Status: false, Error: "Transaction commit error" });
-              });
-            }
-
-            res.json({
-              Status: true,
-              Message: "Admin added and employee updated",
-            });
-          });
-        });
-      }
-    );
+  con.query(sql, [true, req.body.email], (err, result) => {
+    if (err) {
+      return res.json({ Status: false, Error: err });
+    }
+    return res.json({ Status: true });
   });
 });
 
@@ -263,8 +205,8 @@ router.post("/add_admin", (req, res) => {
 // });
 
 router.get("/admin_records", (req, res) => {
-  const sql = "SELECT * FROM admin";
-  con.query(sql, (err, result) => {
+  const sql = "SELECT * FROM employee WHERE isAdmin = ?";
+  con.query(sql, [true], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
   });
