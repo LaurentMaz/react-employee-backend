@@ -246,10 +246,14 @@ router.get("/searchEmployee", (req, res) => {
       "SELECT employee.*, category.name AS category_name  FROM employee INNER JOIN category ON employee.category_id = category.id";
   }
 
-  con.query(sql, [searchValue, searchValue, searchValue], (err, result) => {
-    if (err) return res.json({ Status: false, Error: err });
-    return res.json({ Status: true, Result: result });
-  });
+  con.query(
+    sql,
+    [`%${searchValue}%`, `%${searchValue}%`, `%${searchValue}%`],
+    (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true, Result: result });
+    }
+  );
 });
 
 router.get("/employeesNoAdmin", (req, res) => {
