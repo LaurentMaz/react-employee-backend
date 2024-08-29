@@ -150,26 +150,6 @@ router.put("/delete_admin/:id", (req, res) => {
   });
 });
 
-// router.delete("/delete_admin/:id", (req, res) => {
-//   if (!req.body.isSuperAdmin) {
-//     const sqlDeleteAdmin = "DELETE FROM admin WHERE id = (?)";
-//     const sqlupdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
-
-//     con.query(sqlDeleteAdmin, [req.params.id], (err, result) => {
-//       if (err) return res.json({ Status: false, Error: "Query error" });
-//       con.query(sqlupdateEmployee, [0, req.body.email], (err, result) => {
-//         if (err) return res.json({ Status: false, Error: "Query error" });
-//       });
-//       return res.json({ Status: true });
-//     });
-//   } else {
-//     return res.json({
-//       Status: false,
-//       Error: "Impossible de supprimer un super Admin",
-//     });
-//   }
-// });
-
 router.put("/add_admin", (req, res) => {
   const sql = "UPDATE employee SET isAdmin = ? WHERE email = ?";
 
@@ -180,29 +160,6 @@ router.put("/add_admin", (req, res) => {
     return res.json({ Status: true });
   });
 });
-
-// router.post("/add_admin", (req, res) => {
-//   const sqlAddAdmin = "INSERT INTO admin (`email`, `password`) VALUES (?, ?)";
-//   const sqlUpdateEmployee = "UPDATE employee SET isAdmin = ? WHERE email = ?";
-
-//   con.query(sqlAddAdmin, [req.body.email, req.body.password], (err, result) => {
-//     if (err) {
-//       return res.json({
-//         Status: false,
-//         Error: "Query error during admin insertion",
-//       });
-//     }
-//     con.query(sqlUpdateEmployee, [1, req.body.email], (err, result) => {
-//       if (err) {
-//         return res.json({
-//           Status: false,
-//           Error: "Query error during employee update",
-//         });
-//       }
-//       return res.json({ Status: true });
-//     });
-//   });
-// });
 
 router.get("/admin_records", (req, res) => {
   const sql = "SELECT * FROM employee WHERE isAdmin = ?";
@@ -274,6 +231,23 @@ router.get("/employee", (req, res) => {
     "SELECT employee.*, category.name AS category_name from employee INNER JOIN category ON employee.category_id = category.id";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/searchEmployee", (req, res) => {
+  const searchValue = req.query.searchValue;
+  let sql = "";
+  if (searchValue !== "") {
+    sql =
+      "SELECT employee.*, category.name AS category_name  FROM employee INNER JOIN category ON employee.category_id = category.id WHERE employee.firstName LIKE ? OR employee.lastName LIKE ? OR employee.email LIKE ?";
+  } else {
+    sql =
+      "SELECT employee.*, category.name AS category_name  FROM employee INNER JOIN category ON employee.category_id = category.id";
+  }
+
+  con.query(sql, [searchValue, searchValue, searchValue], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
   });
 });
