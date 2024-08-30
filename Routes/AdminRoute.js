@@ -326,7 +326,11 @@ router.get("/salary_count", (req, res) => {
   });
 });
 
-router.get("/employee/:id", (req, res) => {
+router.get("/employee/:id", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId; // ID récupéré du token après authentification
+  if (userIdFromToken.toString() !== req.params.id.toString()) {
+    return res.json({ Status: false, Error: "Non autorisé" });
+  }
   const sql = "SELECT * from employee WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });

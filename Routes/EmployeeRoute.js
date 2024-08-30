@@ -59,4 +59,13 @@ router.get("/logout", (req, res) => {
   return res.json({ Status: true });
 });
 
+// *************** //
+// HANDLE EQUIPEMENTS //
+// *************** //
+
+// router.get("/equipements/:id", (req, res) => {
+//   const userIdFromToken = req.userId;
+//   const sql = "SELECT * from equipement WHERE employee_id = ?";
+// });
+
 export { router as employeeRouter };
