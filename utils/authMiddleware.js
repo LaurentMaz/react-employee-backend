@@ -13,3 +13,11 @@ export const verifyUser = (req, res, next) => {
     });
   }
 };
+
+export const verifyIdIntegrity = (req, res, next) => {
+  const userIdFromToken = req.userId; // ID récupéré du token après authentification
+  if (userIdFromToken.toString() !== req.params.id.toString()) {
+    return res.json({ Status: false, Error: "Non autorisé" });
+  }
+  next();
+};

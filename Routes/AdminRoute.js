@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import { verifyUser } from "../utils/authMiddleware.js";
+import { verifyIdIntegrity, verifyUser } from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
@@ -326,11 +326,7 @@ router.get("/salary_count", (req, res) => {
   });
 });
 
-router.get("/employee/:id", verifyUser, (req, res) => {
-  const userIdFromToken = req.userId; // ID récupéré du token après authentification
-  if (userIdFromToken.toString() !== req.params.id.toString()) {
-    return res.json({ Status: false, Error: "Non autorisé" });
-  }
+router.get("/employee/:id", verifyUser, verifyIdIntegrity, (req, res) => {
   const sql = "SELECT * from employee WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -340,6 +336,8 @@ router.get("/employee/:id", verifyUser, (req, res) => {
 
 router.put(
   "/update_employee/:id",
+  verifyUser,
+  verifyIdIntegrity,
   upload.single("picture"),
   async (req, res) => {
     const values = [
