@@ -442,4 +442,12 @@ router.put("/update_equipement", (req, res) => {
   );
 });
 
+router.delete("/remove_equipement/", (req, res) => {
+  const sql = "DELETE FROM equipement WHERE id = (?)";
+  con.query(sql, [req.body.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
+
 export { router as adminRouter };
