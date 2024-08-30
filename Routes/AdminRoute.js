@@ -186,7 +186,7 @@ router.post("/add_category", (req, res) => {
   });
 });
 
-router.post("/update_category", (req, res) => {
+router.put("/update_category", (req, res) => {
   const sql = "UPDATE category SET name = (?) WHERE id = (?)";
   con.query(sql, [req.body.category, req.body.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -194,9 +194,9 @@ router.post("/update_category", (req, res) => {
   });
 });
 
-router.post("/remove_category", (req, res) => {
+router.delete("/remove_category", (req, res) => {
   const sql = "DELETE FROM category WHERE id = (?)";
-  con.query(sql, [req.body.id], (err, result) => {
+  con.query(sql, [req.params.id], (err, result) => {
     if (err) {
       // Vérifier le code d'erreur MySQL
       if (err.errno === 1451) {
@@ -258,7 +258,7 @@ router.post("/add_employee", upload.single("picture"), (req, res) => {
 
 router.get("/employee", (req, res) => {
   const sql =
-    "SELECT employee.*, category.name AS category_name from employee INNER JOIN category ON employee.category_id = category.id";
+    "SELECT employee.*, category.name AS category_name from employee LEFT JOIN category ON employee.category_id = category.id";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
     return res.json({ Status: true, Result: result });
@@ -270,10 +270,10 @@ router.get("/searchEmployee", (req, res) => {
   let sql = "";
   if (searchValue !== "") {
     sql =
-      "SELECT employee.*, category.name AS category_name  FROM employee INNER JOIN category ON employee.category_id = category.id WHERE employee.firstName LIKE ? OR employee.lastName LIKE ? OR employee.email LIKE ?";
+      "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id WHERE employee.firstName LIKE ? OR employee.lastName LIKE ? OR employee.email LIKE ?";
   } else {
     sql =
-      "SELECT employee.*, category.name AS category_name  FROM employee INNER JOIN category ON employee.category_id = category.id";
+      "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id";
   }
 
   con.query(
@@ -369,10 +369,30 @@ router.delete("/remove_employee/:id", (req, res) => {
 
 router.get("/equipements", (req, res) => {
   const sql =
-    "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement INNER JOIN employee ON equipement.id = employee.id";
+    "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/equipements/:id", (req, res) => {
+  const sql =
+    "SELECT equipement.*, employee.id AS employee_id FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id WHERE equipement.id = (?)";
+  con.query(sql, [req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+
+    // Extraire et formater la date
+    const formattedResult = result.map((item) => {
+      const date = new Date(item.date_service); // Création d'un objet Date
+      const formattedDate = date.toISOString().split("T")[0]; // Formatage au format YYYY-MM-DD
+      return {
+        ...item, // Conserver les autres propriétés de l'objet
+        date_service: formattedDate, // Remplacer la date avec le format correct
+      };
+    });
+
+    return res.json({ Status: true, Result: formattedResult });
   });
 });
 
@@ -392,6 +412,34 @@ router.post("/add_equipement", (req, res) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true });
   });
+});
+
+router.put("/update_equipement", (req, res) => {
+  const sql = `
+  UPDATE equipement
+  SET brand = ?, name = ?, serial = ?, employee_id = ?, ram = ?, proc = ?
+  WHERE id = ?;
+`;
+  const { equipement, id } = req.body;
+  if (!equipement || !id) {
+    return res.status(400).json({ Status: false, Error: "Missing parameters" });
+  }
+  con.query(
+    sql,
+    [
+      equipement.brand,
+      equipement.name,
+      equipement.serial,
+      equipement.employee_id,
+      equipement.ram,
+      equipement.proc,
+      id,
+    ],
+    (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    }
+  );
 });
 
 export { router as adminRouter };
