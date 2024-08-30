@@ -358,7 +358,25 @@ router.put(
 router.delete("/remove_employee/:id", (req, res) => {
   const sql = "DELETE FROM employee WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: "Query error" });
+    if (err) {
+      // Vérifier le code d'erreur MySQL
+      if (err.errno === 1451) {
+        // Code 1451 : contrainte de clé étrangère (RESTRICT)
+        return res.json({
+          Status: false,
+          ErrorMessage:
+            "Impossible de supprimer cet utilisateur, un équipement lui est encore attribué",
+        });
+      }
+
+      // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
+      return res.json({
+        Status: false,
+        ErrorMessage:
+          "Une erreur s'est produite lors de la suppression de la catégorie.",
+      });
+    }
+
     return res.json({ Status: true });
   });
 });
@@ -448,6 +466,32 @@ router.delete("/remove_equipement/", (req, res) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true });
   });
+});
+
+router.get("/searchEquipement", (req, res) => {
+  const searchValue = req.query.searchValue;
+  let sql = "";
+  if (searchValue !== "") {
+    sql =
+      "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, employee.firstName, employee.lastName, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id WHERE equipement.name LIKE ? OR equipement.brand LIKE ? OR employee.firstName LIKE ? OR employee.lastName LIKE ?";
+  } else {
+    sql =
+      "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id";
+  }
+
+  con.query(
+    sql,
+    [
+      `%${searchValue}%`,
+      `%${searchValue}%`,
+      `%${searchValue}%`,
+      `%${searchValue}%`,
+    ],
+    (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true, Result: result });
+    }
+  );
 });
 
 export { router as adminRouter };
