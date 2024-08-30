@@ -189,7 +189,25 @@ router.post("/update_category", (req, res) => {
 router.post("/remove_category", (req, res) => {
   const sql = "DELETE FROM category WHERE id = (?)";
   con.query(sql, [req.body.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: "Query error" });
+    if (err) {
+      // Vérifier le code d'erreur MySQL
+      if (err.errno === 1451) {
+        // Code 1451 : contrainte de clé étrangère (RESTRICT)
+        return res.json({
+          Status: false,
+          ErrorMessage:
+            "Impossible de supprimer cette catégorie car elle est référencée par d'autres éléments.",
+        });
+      }
+
+      // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
+      return res.json({
+        Status: false,
+        ErrorMessage:
+          "Une erreur s'est produite lors de la suppression de la catégorie.",
+      });
+    }
+
     return res.json({ Status: true });
   });
 });
