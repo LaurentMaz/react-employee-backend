@@ -233,7 +233,6 @@ router.get("/category", (req, res) => {
 // *************** //
 
 router.post("/add_employee", upload.single("picture"), (req, res) => {
-  /* @TODO: check if employee already exists */
   /* @TODO: security checks */
   const sql =
     "INSERT INTO employee (`lastName`, `firstName`, `email`, `password`, `salary`, `address`, `category_id`, `picture`) VALUES (?)";
@@ -250,7 +249,24 @@ router.post("/add_employee", upload.single("picture"), (req, res) => {
       req.file ? req.file.filename : "",
     ];
     con.query(sql, [params], (err, result) => {
-      if (err) return res.json({ Status: false, Error: err });
+      if (err) {
+        // Vérifier le code d'erreur MySQL
+        if (err.errno === 1062) {
+          // Code 1451 : contrainte de clé étrangère (RESTRICT)
+          return res.json({
+            Status: false,
+            ErrorMessage: "Un utilisateur existe déjà avec cet email",
+          });
+        }
+
+        // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
+        return res.json({
+          Status: false,
+          ErrorMessage:
+            "Une erreur s'est produite lors de l'ajout de l'utilisateur : " +
+            err,
+        });
+      }
       return res.json({ Status: true });
     });
   });
