@@ -32,6 +32,10 @@ const upload = multer({
 });
 // End Image Upload System
 
+// *************** //
+// HANDLE ADMINS //
+// *************** //
+
 router.post("/adminlogin", (req, res) => {
   const sql = "SELECT * FROM employee WHERE email = ?";
 
@@ -169,6 +173,10 @@ router.get("/admin_records", (req, res) => {
   });
 });
 
+// *************** //
+// HANDLE CATEGORIES //
+// *************** //
+
 router.post("/add_category", (req, res) => {
   /* @TODO: check if category already exists */
   const sql = "INSERT INTO category (`name`) VALUES (?)";
@@ -219,6 +227,10 @@ router.get("/category", (req, res) => {
     return res.json({ Status: true, Result: result });
   });
 });
+
+// *************** //
+// HANDLE EMPLOYEES //
+// *************** //
 
 router.post("/add_employee", upload.single("picture"), (req, res) => {
   /* @TODO: check if employee already exists */
@@ -347,6 +359,37 @@ router.delete("/remove_employee/:id", (req, res) => {
   const sql = "DELETE FROM employee WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true });
+  });
+});
+
+// *************** //
+// HANDLE EQUIPEMENTS //
+// *************** //
+
+router.get("/equipements", (req, res) => {
+  const sql =
+    "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement INNER JOIN employee ON equipement.id = employee.id";
+  con.query(sql, (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.post("/add_equipement", (req, res) => {
+  const sql =
+    "INSERT INTO equipement (`brand`, `name`, `ram`, `proc`, `serial`, `date_service`, `employee_id`) VALUES (?)";
+  const params = [
+    req.body.brand,
+    req.body.name,
+    req.body.ram,
+    req.body.proc,
+    req.body.serial,
+    req.body.date_service,
+    req.body.employee_id,
+  ];
+  con.query(sql, [params], (err, result) => {
+    if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true });
   });
 });
