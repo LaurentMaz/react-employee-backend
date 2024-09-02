@@ -4,11 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import {
-  verifyAdminRole,
-  verifyIdIntegrity,
-  verifyUser,
-} from "../utils/authMiddleware.js";
+import { verifyAdminRole, verifyUser } from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
@@ -229,7 +225,7 @@ router.delete("/remove_category", verifyUser, verifyAdminRole, (req, res) => {
   });
 });
 
-router.get("/category", verifyUser, verifyAdminRole, (req, res) => {
+router.get("/category", verifyUser, (req, res) => {
   const sql = "SELECT * FROM category";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -341,24 +337,17 @@ router.get("/salary_count", verifyUser, verifyAdminRole, (req, res) => {
   });
 });
 
-router.get(
-  "/employee/:id",
-  verifyUser,
-  verifyIdIntegrity,
-  verifyAdminRole,
-  (req, res) => {
-    const sql = "SELECT * from employee WHERE id = (?)";
-    con.query(sql, [req.params.id], (err, result) => {
-      if (err) return res.json({ Status: false, Error: "Query error" });
-      return res.json({ Status: true, Result: result });
-    });
-  }
-);
+router.get("/employee/:id", verifyUser, verifyAdminRole, (req, res) => {
+  const sql = "SELECT * from employee WHERE id = (?)";
+  con.query(sql, [req.params.id], (err, result) => {
+    if (err) return res.json({ Status: false, Error: "Query error" });
+    return res.json({ Status: true, Result: result });
+  });
+});
 
 router.put(
   "/update_employee/:id",
   verifyUser,
-  verifyIdIntegrity,
   verifyAdminRole,
   upload.single("picture"),
   async (req, res) => {

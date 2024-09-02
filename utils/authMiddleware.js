@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 
-//Middleware
+/** *
+ * Middleware to check TOKEN presence and TOKEN integrity
+ * @USE for admins && employees *
+ */
 export const verifyUser = (req, res, next) => {
   try {
     const token = req.cookies.token; // Debugging
@@ -25,32 +28,38 @@ export const verifyUser = (req, res, next) => {
   }
 };
 
+/** *
+ * Middleware to check integrity between id in URL and id in TOKEN
+ * @USE for employees *
+ */
 export const verifyIdIntegrity = (req, res, next) => {
   try {
-    const role = req.role;
     const userIdFromToken = req.userId; // ID récupéré du token après authentification
 
     // Assurez-vous que les valeurs nécessaires existent
-    if (!userIdFromToken || !role) {
+    if (!userIdFromToken) {
       return res
         .status(400)
         .json({ Status: false, Error: "Erreur de Token, valeur absente" });
     }
 
-    if (role !== "admin") {
-      if (userIdFromToken.toString() !== req.params.id.toString()) {
-        return res.status(403).json({ Status: false, Error: "Non autorisé" });
-      }
+    if (userIdFromToken.toString() !== req.params.id.toString()) {
+      return res.status(403).json({ Status: false, Error: "Non autorisé" });
     }
+
     next();
   } catch (error) {
     return res.status(500).json({
       Status: false,
-      ErrorMessage: "Erreur du serveur. Veuillez réessayer plus tard.",
+      ErrorMessage: "Erreur du serveur. Veuillez réessayer plus tard: " + error,
     });
   }
 };
 
+/** *
+ * Middleware to check admin role in TOKEN
+ * @USE for admins *
+ */
 export const verifyAdminRole = (req, res, next) => {
   try {
     const role = req.role;
@@ -61,6 +70,32 @@ export const verifyAdminRole = (req, res, next) => {
     }
 
     if (role !== "admin") {
+      return res.status(403).json({ Status: false, Error: "Non autorisé" });
+    }
+    next();
+  } catch (error) {
+    return res.status(500).json({
+      Status: false,
+      ErrorMessage: "Erreur du serveur. Veuillez réessayer plus tard.",
+    });
+  }
+};
+
+/** *
+ * Middleware to check employee role in TOKEN
+ * @USE for employees *
+ */
+export const verifyEmployeeRole = (req, res, next) => {
+  try {
+    const role = req.role;
+    if (!role) {
+      return res
+        .status(400)
+        .json({ Status: false, Error: "Erreur de Token, valeur absente" });
+    }
+
+    if (role !== "employee") {
+      console.log(role);
       return res.status(403).json({ Status: false, Error: "Non autorisé" });
     }
     next();

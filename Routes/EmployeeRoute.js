@@ -2,7 +2,11 @@ import express from "express";
 import con from "../utils/db.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { verifyUser } from "../utils/authMiddleware.js";
+import {
+  verifyEmployeeRole,
+  verifyIdIntegrity,
+  verifyUser,
+} from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
@@ -44,7 +48,7 @@ router.post("/employeelogin", (req, res) => {
   });
 });
 
-router.get("/detail", verifyUser, (req, res) => {
+router.get("/detail", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId; // ID récupéré du token après authentification
 
   const sql = "SELECT * FROM employee WHERE id = ?";
@@ -63,12 +67,8 @@ router.get("/logout", (req, res) => {
 // HANDLE EQUIPEMENTS //
 // *************** //
 
-router.get("/equipements/", verifyUser, (req, res) => {
+router.get("/equipements/", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
-
-  if (req.role !== "employee") {
-    return res.status(403).json({ Status: false, Error: "Accès non autorisé" });
-  }
 
   const sql = "SELECT * from equipement WHERE employee_id = ?";
   con.query(sql, [userIdFromToken], (err, result) => {
