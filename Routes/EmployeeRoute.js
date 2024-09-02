@@ -58,7 +58,7 @@ router.post("/employeelogin", (req, res) => {
               id: id,
             },
             "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-            { expiresIn: "1d" }
+            { expiresIn: "30m" }
           );
           res.cookie("token", token);
           return res.json({ loginStatus: true, id: result[0].id });
@@ -124,6 +124,52 @@ router.get("/conges", verifyUser, verifyEmployeeRole, (req, res) => {
     return res.json({ Status: true });
   });
 });
+
+router.get("/conges_pending", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql =
+    "SELECT id,status, DATE_FORMAT(startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(endDate, '%d/%m/%Y') AS endDate, reason, businessDays from conges WHERE employeeId = ? AND status = ?";
+  con.query(sql, [userIdFromToken, "En cours"], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+router.get("/conges_accepted", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql =
+    "SELECT id,status, DATE_FORMAT(startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(endDate, '%d/%m/%Y') AS endDate, reason, businessDays from conges WHERE employeeId = ? AND status = ?";
+  con.query(sql, [userIdFromToken, "Approuvé"], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+router.get("/conges_refused", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql =
+    "SELECT id,status, DATE_FORMAT(startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(endDate, '%d/%m/%Y') AS endDate, reason, businessDays from conges WHERE employeeId = ? AND status = ?";
+  con.query(sql, [userIdFromToken, "Rejeté"], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get(
+  "/congesAvalaible_currentYear",
+  verifyUser,
+  verifyEmployeeRole,
+  (req, res) => {
+    const userIdFromToken = req.userId;
+    const sql = `SELECT SUM(businessDays) AS totalBusinessDays
+FROM conges
+WHERE startDate >= STR_TO_DATE(CONCAT(YEAR(CURDATE()) - 1, '-06-01'), '%Y-%m-%d')
+AND endDate <= STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-05-31'), '%Y-%m-%d');
+`;
+    con.query(sql, [userIdFromToken], (err, result) => {
+      if (err) return res.status(500).json({ Status: false, Error: err });
+      return res.json({ Status: true, Result: result });
+    });
+  }
+);
 
 router.post("/add_conge", verifyUser, (req, res) => {
   const userIdFromToken = req.userId;

@@ -62,7 +62,7 @@ router.post("/adminlogin", (req, res) => {
                   id: id,
                 },
                 "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-                { expiresIn: "1d" }
+                { expiresIn: "30m" }
               );
 
               res.cookie("token", token);
