@@ -63,9 +63,18 @@ router.get("/logout", (req, res) => {
 // HANDLE EQUIPEMENTS //
 // *************** //
 
-// router.get("/equipements/:id", (req, res) => {
-//   const userIdFromToken = req.userId;
-//   const sql = "SELECT * from equipement WHERE employee_id = ?";
-// });
+router.get("/equipements/", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId;
+
+  if (req.role !== "employee") {
+    return res.status(403).json({ Status: false, Error: "Accès non autorisé" });
+  }
+
+  const sql = "SELECT * from equipement WHERE employee_id = ?";
+  con.query(sql, [userIdFromToken], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
 
 export { router as employeeRouter };
