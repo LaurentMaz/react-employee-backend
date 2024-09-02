@@ -51,7 +51,7 @@ export const verifyIdIntegrity = (req, res, next) => {
   }
 };
 
-export const verifyAdmin = (req, res, next) => {
+export const verifyAdminRole = (req, res, next) => {
   try {
     const role = req.role;
     if (!role) {

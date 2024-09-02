@@ -4,7 +4,11 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import { verifyIdIntegrity, verifyUser } from "../utils/authMiddleware.js";
+import {
+  verifyAdminRole,
+  verifyIdIntegrity,
+  verifyUser,
+} from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
@@ -97,7 +101,7 @@ router.get("/admin_count", (req, res) => {
   });
 });
 
-router.get("/currentAdmin", verifyUser, (req, res) => {
+router.get("/currentAdmin", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT * FROM employee where id = ? AND isAdmin = ?";
   const userIdFromToken = req.userId;
   con.query(sql, [userIdFromToken, true], (err, result) => {
@@ -106,7 +110,7 @@ router.get("/currentAdmin", verifyUser, (req, res) => {
   });
 });
 
-router.get("/admin/:id", (req, res) => {
+router.get("/admin/:id", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT email, isSuperAdmin FROM employee WHERE id = ?";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -114,26 +118,31 @@ router.get("/admin/:id", (req, res) => {
   });
 });
 
-router.put("/update_admin/:id", async (req, res) => {
-  let sql = "UPDATE employee SET email = ?, isSuperAdmin = ?";
-  const values = [req.body.email, req.body.adminChecked];
+router.put(
+  "/update_admin/:id",
+  verifyUser,
+  verifyAdminRole,
+  async (req, res) => {
+    let sql = "UPDATE employee SET email = ?, isSuperAdmin = ?";
+    const values = [req.body.email, req.body.adminChecked];
 
-  // Si le mot de passe n'est pas vide, on l'ajoute à la requête
-  if (req.body.password && req.body.password.trim() !== "") {
-    const hash = await bcrypt.hash(req.body.password.toString(), 10);
-    sql += ", password = ?";
-    values.push(hash);
+    // Si le mot de passe n'est pas vide, on l'ajoute à la requête
+    if (req.body.password && req.body.password.trim() !== "") {
+      const hash = await bcrypt.hash(req.body.password.toString(), 10);
+      sql += ", password = ?";
+      values.push(hash);
+    }
+
+    // Ajout de la condition WHERE pour l'ID
+    sql += " WHERE id = ?";
+    con.query(sql, [...values, req.params.id], (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    });
   }
+);
 
-  // Ajout de la condition WHERE pour l'ID
-  sql += " WHERE id = ?";
-  con.query(sql, [...values, req.params.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: err });
-    return res.json({ Status: true });
-  });
-});
-
-router.put("/delete_admin/:id", (req, res) => {
+router.put("/delete_admin/:id", verifyUser, verifyAdminRole, (req, res) => {
   // Vérifiez si l'utilisateur est un super administrateur
   if (req.body.isSuperAdmin) {
     return res.json({
@@ -154,7 +163,7 @@ router.put("/delete_admin/:id", (req, res) => {
   });
 });
 
-router.put("/add_admin", (req, res) => {
+router.put("/add_admin", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "UPDATE employee SET isAdmin = ? WHERE email = ?";
 
   con.query(sql, [true, req.body.email], (err, result) => {
@@ -165,7 +174,7 @@ router.put("/add_admin", (req, res) => {
   });
 });
 
-router.get("/admin_records", (req, res) => {
+router.get("/admin_records", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT * FROM employee WHERE isAdmin = ?";
   con.query(sql, [true], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -177,7 +186,7 @@ router.get("/admin_records", (req, res) => {
 // HANDLE CATEGORIES //
 // *************** //
 
-router.post("/add_category", (req, res) => {
+router.post("/add_category", verifyUser, verifyAdminRole, (req, res) => {
   /* @TODO: check if category already exists */
   const sql = "INSERT INTO category (`name`) VALUES (?)";
   con.query(sql, [req.body.category], (err, result) => {
@@ -186,7 +195,7 @@ router.post("/add_category", (req, res) => {
   });
 });
 
-router.put("/update_category", (req, res) => {
+router.put("/update_category", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "UPDATE category SET name = (?) WHERE id = (?)";
   con.query(sql, [req.body.category, req.body.id], (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -194,7 +203,7 @@ router.put("/update_category", (req, res) => {
   });
 });
 
-router.delete("/remove_category", (req, res) => {
+router.delete("/remove_category", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "DELETE FROM category WHERE id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
     if (err) {
@@ -220,7 +229,7 @@ router.delete("/remove_category", (req, res) => {
   });
 });
 
-router.get("/category", (req, res) => {
+router.get("/category", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT * FROM category";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -232,47 +241,53 @@ router.get("/category", (req, res) => {
 // HANDLE EMPLOYEES //
 // *************** //
 
-router.post("/add_employee", upload.single("picture"), (req, res) => {
-  /* @TODO: security checks */
-  const sql =
-    "INSERT INTO employee (`lastName`, `firstName`, `email`, `password`, `salary`, `address`, `category_id`, `picture`) VALUES (?)";
-  bcrypt.hash(req.body.password.toString(), 10, (err, hash) => {
-    if (err) return res.json({ Status: false, Error: "Query error" });
-    const params = [
-      req.body.lastName,
-      req.body.firstName,
-      req.body.email,
-      hash,
-      req.body.salary,
-      req.body.address,
-      req.body.category,
-      req.file ? req.file.filename : "",
-    ];
-    con.query(sql, [params], (err, result) => {
-      if (err) {
-        // Vérifier le code d'erreur MySQL
-        if (err.errno === 1062) {
-          // Code 1451 : contrainte de clé étrangère (RESTRICT)
+router.post(
+  "/add_employee",
+  verifyUser,
+  verifyAdminRole,
+  upload.single("picture"),
+  (req, res) => {
+    /* @TODO: security checks */
+    const sql =
+      "INSERT INTO employee (`lastName`, `firstName`, `email`, `password`, `salary`, `address`, `category_id`, `picture`) VALUES (?)";
+    bcrypt.hash(req.body.password.toString(), 10, (err, hash) => {
+      if (err) return res.json({ Status: false, Error: "Query error" });
+      const params = [
+        req.body.lastName,
+        req.body.firstName,
+        req.body.email,
+        hash,
+        req.body.salary,
+        req.body.address,
+        req.body.category,
+        req.file ? req.file.filename : "",
+      ];
+      con.query(sql, [params], (err, result) => {
+        if (err) {
+          // Vérifier le code d'erreur MySQL
+          if (err.errno === 1062) {
+            // Code 1451 : contrainte de clé étrangère (RESTRICT)
+            return res.json({
+              Status: false,
+              ErrorMessage: "Un utilisateur existe déjà avec cet email",
+            });
+          }
+
+          // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
           return res.json({
             Status: false,
-            ErrorMessage: "Un utilisateur existe déjà avec cet email",
+            ErrorMessage:
+              "Une erreur s'est produite lors de l'ajout de l'utilisateur : " +
+              err,
           });
         }
-
-        // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
-        return res.json({
-          Status: false,
-          ErrorMessage:
-            "Une erreur s'est produite lors de l'ajout de l'utilisateur : " +
-            err,
-        });
-      }
-      return res.json({ Status: true });
+        return res.json({ Status: true });
+      });
     });
-  });
-});
+  }
+);
 
-router.get("/employee", (req, res) => {
+router.get("/employee", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
     "SELECT employee.*, category.name AS category_name from employee LEFT JOIN category ON employee.category_id = category.id";
   con.query(sql, (err, result) => {
@@ -281,7 +296,7 @@ router.get("/employee", (req, res) => {
   });
 });
 
-router.get("/searchEmployee", (req, res) => {
+router.get("/searchEmployee", verifyUser, verifyAdminRole, (req, res) => {
   const searchValue = req.query.searchValue;
   let sql = "";
   if (searchValue !== "") {
@@ -302,7 +317,7 @@ router.get("/searchEmployee", (req, res) => {
   );
 });
 
-router.get("/employeesNoAdmin", (req, res) => {
+router.get("/employeesNoAdmin", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT * from employee WHERE isAdmin = ? ORDER BY lastName ASC";
   con.query(sql, [0], (err, result) => {
     if (err) return res.json({ Status: false, Error: err });
@@ -318,7 +333,7 @@ router.get("/employee_count", (req, res) => {
   });
 });
 
-router.get("/salary_count", (req, res) => {
+router.get("/salary_count", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT sum(salary) as salary FROM employee";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: "Query error" });
@@ -326,18 +341,25 @@ router.get("/salary_count", (req, res) => {
   });
 });
 
-router.get("/employee/:id", verifyUser, verifyIdIntegrity, (req, res) => {
-  const sql = "SELECT * from employee WHERE id = (?)";
-  con.query(sql, [req.params.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: "Query error" });
-    return res.json({ Status: true, Result: result });
-  });
-});
+router.get(
+  "/employee/:id",
+  verifyUser,
+  verifyIdIntegrity,
+  verifyAdminRole,
+  (req, res) => {
+    const sql = "SELECT * from employee WHERE id = (?)";
+    con.query(sql, [req.params.id], (err, result) => {
+      if (err) return res.json({ Status: false, Error: "Query error" });
+      return res.json({ Status: true, Result: result });
+    });
+  }
+);
 
 router.put(
   "/update_employee/:id",
   verifyUser,
   verifyIdIntegrity,
+  verifyAdminRole,
   upload.single("picture"),
   async (req, res) => {
     const values = [
@@ -373,37 +395,42 @@ router.put(
   }
 );
 
-router.delete("/remove_employee/:id", (req, res) => {
-  const sql = "DELETE FROM employee WHERE id = (?)";
-  con.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      // Vérifier le code d'erreur MySQL
-      if (err.errno === 1451) {
-        // Code 1451 : contrainte de clé étrangère (RESTRICT)
+router.delete(
+  "/remove_employee/:id",
+  verifyUser,
+  verifyAdminRole,
+  (req, res) => {
+    const sql = "DELETE FROM employee WHERE id = (?)";
+    con.query(sql, [req.params.id], (err, result) => {
+      if (err) {
+        // Vérifier le code d'erreur MySQL
+        if (err.errno === 1451) {
+          // Code 1451 : contrainte de clé étrangère (RESTRICT)
+          return res.json({
+            Status: false,
+            ErrorMessage:
+              "Impossible de supprimer cet utilisateur, un équipement lui est encore attribué",
+          });
+        }
+
+        // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
         return res.json({
           Status: false,
           ErrorMessage:
-            "Impossible de supprimer cet utilisateur, un équipement lui est encore attribué",
+            "Une erreur s'est produite lors de la suppression de la catégorie.",
         });
       }
 
-      // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
-      return res.json({
-        Status: false,
-        ErrorMessage:
-          "Une erreur s'est produite lors de la suppression de la catégorie.",
-      });
-    }
-
-    return res.json({ Status: true });
-  });
-});
+      return res.json({ Status: true });
+    });
+  }
+);
 
 // *************** //
 // HANDLE EQUIPEMENTS //
 // *************** //
 
-router.get("/equipements", (req, res) => {
+router.get("/equipements", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
     "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id";
   con.query(sql, (err, result) => {
@@ -412,7 +439,7 @@ router.get("/equipements", (req, res) => {
   });
 });
 
-router.get("/equipements/:id", (req, res) => {
+router.get("/equipements/:id", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
     "SELECT equipement.*, employee.id AS employee_id FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id WHERE equipement.id = (?)";
   con.query(sql, [req.params.id], (err, result) => {
@@ -432,7 +459,7 @@ router.get("/equipements/:id", (req, res) => {
   });
 });
 
-router.post("/add_equipement", (req, res) => {
+router.post("/add_equipement", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
     "INSERT INTO equipement (`brand`, `name`, `ram`, `proc`, `serial`, `date_service`, `employee_id`) VALUES (?)";
   const params = [
@@ -450,7 +477,7 @@ router.post("/add_equipement", (req, res) => {
   });
 });
 
-router.put("/update_equipement", (req, res) => {
+router.put("/update_equipement", verifyUser, verifyAdminRole, (req, res) => {
   const sql = `
   UPDATE equipement
   SET brand = ?, name = ?, serial = ?, employee_id = ?, ram = ?, proc = ?
@@ -478,15 +505,20 @@ router.put("/update_equipement", (req, res) => {
   );
 });
 
-router.delete("/remove_equipement/", (req, res) => {
-  const sql = "DELETE FROM equipement WHERE id = (?)";
-  con.query(sql, [req.body.id], (err, result) => {
-    if (err) return res.json({ Status: false, Error: err });
-    return res.json({ Status: true });
-  });
-});
+router.delete(
+  "/remove_equipement/",
+  verifyUser,
+  verifyAdminRole,
+  (req, res) => {
+    const sql = "DELETE FROM equipement WHERE id = (?)";
+    con.query(sql, [req.body.id], (err, result) => {
+      if (err) return res.json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    });
+  }
+);
 
-router.get("/searchEquipement", (req, res) => {
+router.get("/searchEquipement", verifyUser, verifyAdminRole, (req, res) => {
   const searchValue = req.query.searchValue;
   let sql = "";
   if (searchValue !== "") {
