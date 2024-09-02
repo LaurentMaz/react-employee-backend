@@ -134,6 +134,7 @@ router.get("/conges_pending", verifyUser, verifyEmployeeRole, (req, res) => {
     return res.json({ Status: true, Result: result });
   });
 });
+
 router.get("/conges_accepted", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
   const sql =
@@ -143,6 +144,7 @@ router.get("/conges_accepted", verifyUser, verifyEmployeeRole, (req, res) => {
     return res.json({ Status: true, Result: result });
   });
 });
+
 router.get("/conges_refused", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
   const sql =
@@ -162,9 +164,27 @@ router.get(
     const sql = `SELECT SUM(businessDays) AS totalBusinessDays
 FROM conges
 WHERE startDate >= STR_TO_DATE(CONCAT(YEAR(CURDATE()) - 1, '-06-01'), '%Y-%m-%d')
-AND endDate <= STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-05-31'), '%Y-%m-%d');
+AND endDate <= STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-05-31'), '%Y-%m-%d') AND employeeId = ? AND status = ?;
 `;
-    con.query(sql, [userIdFromToken], (err, result) => {
+    con.query(sql, [userIdFromToken, "Approuvé"], (err, result) => {
+      if (err) return res.status(500).json({ Status: false, Error: err });
+      return res.json({ Status: true, Result: result });
+    });
+  }
+);
+
+router.get(
+  "/congesAvalaible_nextYear",
+  verifyUser,
+  verifyEmployeeRole,
+  (req, res) => {
+    const userIdFromToken = req.userId;
+    const sql = `SELECT SUM(businessDays) AS totalBusinessDays
+FROM conges
+WHERE startDate >= STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-06-01'), '%Y-%m-%d')
+AND endDate <= STR_TO_DATE(CONCAT(YEAR(CURDATE()) +1, '-05-31'), '%Y-%m-%d') AND employeeId = ? AND status = ?;
+`;
+    con.query(sql, [userIdFromToken, "Approuvé"], (err, result) => {
       if (err) return res.status(500).json({ Status: false, Error: err });
       return res.json({ Status: true, Result: result });
     });
