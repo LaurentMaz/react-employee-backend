@@ -450,10 +450,11 @@ router.get("/equipements/:id", verifyUser, verifyAdminRole, (req, res) => {
 
 router.post("/add_equipement", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
-    "INSERT INTO equipement (`brand`, `name`, `ram`, `proc`, `serial`, `date_service`, `employee_id`) VALUES (?)";
+    "INSERT INTO equipement (`brand`, `name`, `type`, `ram`, `proc`, `serial`, `date_service`, `employee_id`) VALUES (?)";
   const params = [
     req.body.brand,
     req.body.name,
+    req.body.type,
     req.body.ram,
     req.body.proc,
     req.body.serial,
@@ -469,7 +470,7 @@ router.post("/add_equipement", verifyUser, verifyAdminRole, (req, res) => {
 router.put("/update_equipement", verifyUser, verifyAdminRole, (req, res) => {
   const sql = `
   UPDATE equipement
-  SET brand = ?, name = ?, serial = ?, employee_id = ?, ram = ?, proc = ?
+  SET brand = ?, name = ?, type = ?, serial = ?, employee_id = ?, ram = ?, proc = ?
   WHERE id = ?;
 `;
   const { equipement, id } = req.body;
@@ -481,6 +482,7 @@ router.put("/update_equipement", verifyUser, verifyAdminRole, (req, res) => {
     [
       equipement.brand,
       equipement.name,
+      equipement.type,
       equipement.serial,
       equipement.employee_id,
       equipement.ram,
@@ -508,19 +510,22 @@ router.delete(
 );
 
 router.get("/searchEquipement", verifyUser, verifyAdminRole, (req, res) => {
-  const searchValue = req.query.searchValue;
+  let searchValue = req.query.searchValue;
   let sql = "";
   if (searchValue !== "") {
     sql =
-      "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, employee.firstName, employee.lastName, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id WHERE equipement.name LIKE ? OR equipement.brand LIKE ? OR employee.firstName LIKE ? OR employee.lastName LIKE ?";
+      "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, employee.firstName, employee.lastName, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id WHERE equipement.name LIKE ? OR equipement.type LIKE ? OR equipement.brand LIKE ? OR employee.firstName LIKE ? OR employee.lastName LIKE ?";
   } else {
     sql =
       "SELECT equipement.*, DATE_FORMAT(equipement.date_service, '%d/%m/%Y') AS date_service , employee.id AS employee_id, CONCAT(employee.firstName, ' ', employee.lastName) AS employee_name FROM equipement LEFT JOIN employee ON equipement.employee_id = employee.id";
   }
 
+  if (searchValue == "portable") searchValue = "laptop";
+  if (searchValue == "fixe") searchValue = "desktop";
   con.query(
     sql,
     [
+      `%${searchValue}%`,
       `%${searchValue}%`,
       `%${searchValue}%`,
       `%${searchValue}%`,
