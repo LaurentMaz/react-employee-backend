@@ -7,8 +7,35 @@ import {
   verifyIdIntegrity,
   verifyUser,
 } from "../utils/authMiddleware.js";
+import moment from "moment";
 
 const router = express.Router();
+
+/**
+ * FUNCTIONS GLOBALES
+ */
+
+// Fonction pour vérifier si un jour est un jour ouvrable (lundi-vendredi)
+function isBusinessDay(date) {
+  const dayOfWeek = date.isoWeekday(); // 1 (lundi) à 5 (vendredi)
+  return dayOfWeek >= 1 && dayOfWeek <= 6;
+}
+
+// Fonction pour calculer les jours ouvrables entre deux dates
+function countBusinessDays(startDate, endDate) {
+  let count = 0;
+  let currentDate = moment(startDate); // Crée un clone pour ne pas modifier l'original
+
+  // Itérer sur chaque jour entre startDate et endDate
+  while (currentDate.isSameOrBefore(endDate, "day")) {
+    if (isBusinessDay(currentDate)) {
+      count++;
+    }
+    currentDate.add(1, "day"); // Passe au jour suivant
+  }
+
+  return count;
+}
 
 router.post("/employeelogin", (req, res) => {
   const sql = "SELECT id, email, password FROM employee WHERE email = ?";
@@ -89,16 +116,30 @@ router.get("/conge_types", (req, res) => {
   });
 });
 
+router.get("/conges", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql = "SELECT * from conges WHERE employeeId = ?";
+  con.query(sql, [userIdFromToken], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
+
 router.post("/add_conge", verifyUser, (req, res) => {
   const userIdFromToken = req.userId;
+  const startDate = moment(req.body.startDate); // Date de début
+  const endDate = moment(req.body.endDate); // Date de fin
+  const businessDays = countBusinessDays(startDate, endDate);
+
   const sql =
-    "INSERT INTO conges (`employeeId`, `congeTypesId`, `startDate`, `endDate`, `reason`) VALUES (?)";
+    "INSERT INTO conges (`employeeId`, `congeTypesId`, `startDate`, `endDate`, `reason`, `businessDays`) VALUES (?)";
   const params = [
     userIdFromToken,
     req.body.congeTypesId,
     req.body.startDate,
     req.body.endDate,
     req.body.reason,
+    businessDays,
   ];
   con.query(sql, [params], (err, result) => {
     if (err) return res.status(500).json({ Status: false, Error: err });
