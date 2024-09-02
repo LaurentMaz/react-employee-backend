@@ -9,15 +9,18 @@ export const verifyUser = (req, res, next) => {
       if (err) return res.json({ Status: false, Error: "Wrong token" });
       req.userId = decoded.id;
       req.role = decoded.role;
-      next();
     });
   }
+  next();
 };
 
 export const verifyIdIntegrity = (req, res, next) => {
+  const role = req.role;
   const userIdFromToken = req.userId; // ID récupéré du token après authentification
-  if (userIdFromToken.toString() !== req.params.id.toString()) {
-    return res.json({ Status: false, Error: "Non autorisé" });
+  if (role !== "admin") {
+    if (userIdFromToken.toString() !== req.params.id.toString()) {
+      return res.json({ Status: false, Error: "Non autorisé" });
+    }
   }
   next();
 };
