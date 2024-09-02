@@ -77,4 +77,33 @@ router.get("/equipements/", verifyUser, verifyEmployeeRole, (req, res) => {
   });
 });
 
+// *************** //
+// HANDLE CONGES //
+// *************** //
+
+router.get("/conge_types", (req, res) => {
+  const sql = "SELECT * from congeTypes";
+  con.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.post("/add_conge", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql =
+    "INSERT INTO conges (`employeeId`, `congeTypesId`, `startDate`, `endDate`, `reason`) VALUES (?)";
+  const params = [
+    userIdFromToken,
+    req.body.congeTypesId,
+    req.body.startDate,
+    req.body.endDate,
+    req.body.reason,
+  ];
+  con.query(sql, [params], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
+
 export { router as employeeRouter };
