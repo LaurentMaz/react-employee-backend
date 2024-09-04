@@ -42,6 +42,23 @@ function countBusinessDays(startDate, endDate) {
   return count;
 }
 
+// Fonction pour récupérer les infos d'un congé depuis son id
+async function getCongeById(id) {
+  return new Promise((resolve, reject) => {
+    const sql = "SELECT * FROM conges WHERE id = ?";
+
+    con.query(sql, [id], (err, result) => {
+      if (err) {
+        return reject(err);
+      }
+      if (result.length === 0) {
+        return resolve(null);
+      }
+      return resolve(result[0]);
+    });
+  });
+}
+
 router.post("/employeelogin", (req, res) => {
   const sql = "SELECT id, email, password FROM employee WHERE email = ?";
   con.query(sql, [req.body.email], (err, result) => {
@@ -126,6 +143,16 @@ router.get("/conges", verifyUser, verifyEmployeeRole, (req, res) => {
   const sql =
     "SELECT id,status, DATE_FORMAT(startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(endDate, '%d/%m/%Y') AS endDate, reason, businessDays from conges WHERE employeeId = ?";
   con.query(sql, [userIdFromToken], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true, Result: result });
+  });
+});
+
+router.get("/conge/:id", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const sql =
+    "SELECT *, DATE_FORMAT(startDate, '%Y-%m-%d') as startDate, DATE_FORMAT(endDate, '%Y-%m-%d') as endDate FROM conges WHERE id = ?AND employeeId = ?";
+  con.query(sql, [req.params.id, userIdFromToken], (err, result) => {
     if (err) return res.status(500).json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
   });
@@ -218,5 +245,62 @@ router.post("/add_conge", verifyUser, (req, res) => {
     return res.json({ Status: true });
   });
 });
+
+router.put("/update_conge", verifyUser, verifyEmployeeRole, (req, res) => {
+  const userIdFromToken = req.userId;
+  const startDate = moment(req.body.startDate); // Date de début
+  const endDate = moment(req.body.endDate); // Date de fin
+  const businessDays = countBusinessDays(startDate, endDate);
+
+  const sql =
+    "UPDATE conges SET id = ?, employeeId = ?,congeTypesId = ?,startDate = ?,endDate = ?,status = ?, reason=?,businessDays=? WHERE id = ?";
+
+  const params = [
+    req.body.id,
+    userIdFromToken,
+    req.body.congeTypesId,
+    req.body.startDate,
+    req.body.endDate,
+    "En cours",
+    req.body.reason,
+    businessDays,
+    req.body.id,
+  ];
+
+  con.query(sql, params, (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
+
+router.delete(
+  "/remove_conge/:id",
+  verifyUser,
+  verifyEmployeeRole,
+  async (req, res) => {
+    const userIdFromToken = req.userId;
+    const congeId = parseInt(req.params.id);
+    const conge = await getCongeById(congeId);
+
+    if (conge.employeeId !== userIdFromToken) {
+      return res
+        .status(403)
+        .json({ Status: false, Error: "Accès non autorisé" });
+    }
+
+    const sql = "DELETE FROM conges WHERE id = (?)";
+    con.query(sql, [req.params.id], (err, result) => {
+      if (err) {
+        return res.json({
+          Status: false,
+          ErrorMessage:
+            "Une erreur s'est produite lors de la suppression du congé.",
+        });
+      }
+
+      return res.json({ Status: true });
+    });
+  }
+);
 
 export { router as employeeRouter };
