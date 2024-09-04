@@ -18,7 +18,7 @@ const router = express.Router();
 // Fonction pour vérifier si un jour est un jour ouvrable (lundi-vendredi)
 function isBusinessDay(date) {
   const dayOfWeek = date.isoWeekday(); // 1 (lundi) à 5 (vendredi)
-  return dayOfWeek >= 1 && dayOfWeek <= 6;
+  return dayOfWeek >= 1 && dayOfWeek <= 5;
 }
 
 // Fonction pour calculer les jours ouvrables entre deux dates
@@ -29,7 +29,12 @@ function countBusinessDays(startDate, endDate) {
   // Itérer sur chaque jour entre startDate et endDate
   while (currentDate.isSameOrBefore(endDate, "day")) {
     if (isBusinessDay(currentDate)) {
-      count++;
+      if (currentDate.isoWeekday() === 5) {
+        // Si c'est vendredi
+        count += 2; // Ajouter 2 jours
+      } else {
+        count++; // Sinon, ajouter 1 jour
+      }
     }
     currentDate.add(1, "day"); // Passe au jour suivant
   }
@@ -118,10 +123,11 @@ router.get("/conge_types", (req, res) => {
 
 router.get("/conges", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
-  const sql = "SELECT * from conges WHERE employeeId = ?";
+  const sql =
+    "SELECT id,status, DATE_FORMAT(startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(endDate, '%d/%m/%Y') AS endDate, reason, businessDays from conges WHERE employeeId = ?";
   con.query(sql, [userIdFromToken], (err, result) => {
     if (err) return res.status(500).json({ Status: false, Error: err });
-    return res.json({ Status: true });
+    return res.json({ Status: true, Result: result });
   });
 });
 

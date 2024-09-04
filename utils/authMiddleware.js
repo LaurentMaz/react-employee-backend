@@ -11,10 +11,7 @@ export const verifyUser = (req, res, next) => {
       return res.status(401).json({ Status: false, Error: "Non authentifié" });
     if (token) {
       jwt.verify(token, "jwt_secret_key", (err, decoded) => {
-        if (err)
-          return res
-            .status(403)
-            .json({ Status: false, Error: "Token invalide" });
+        if (err) return res.status(401).json({ Status: false, Error: err });
         req.userId = decoded.id;
         req.role = decoded.role;
         next();
