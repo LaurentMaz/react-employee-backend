@@ -8,8 +8,13 @@ import { verifyAdminRole, verifyUser } from "../utils/authMiddleware.js";
 
 const router = express.Router();
 
-// Image Upload System
+// *************** //
+/**
+ * fonctions globales
+ */
+// *************** //
 
+// Image Upload System
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "public/images");
@@ -30,7 +35,23 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
 });
-// End Image Upload System
+
+// Fonction pour récupérer les infos d'un equipement depuis son id
+async function getEquipementById(id) {
+  return new Promise((resolve, reject) => {
+    const sql = "SELECT * FROM equipement WHERE id = ?";
+
+    con.query(sql, [id], (err, result) => {
+      if (err) {
+        return reject(err);
+      }
+      if (result.length === 0) {
+        return resolve(null);
+      }
+      return resolve(result[0]);
+    });
+  });
+}
 
 // *************** //
 // HANDLE ADMINS //
@@ -199,31 +220,36 @@ router.put("/update_category", verifyUser, verifyAdminRole, (req, res) => {
   });
 });
 
-router.delete("/remove_category", verifyUser, verifyAdminRole, (req, res) => {
-  const sql = "DELETE FROM category WHERE id = (?)";
-  con.query(sql, [req.params.id], (err, result) => {
-    if (err) {
-      // Vérifier le code d'erreur MySQL
-      if (err.errno === 1451) {
-        // Code 1451 : contrainte de clé étrangère (RESTRICT)
+router.delete(
+  "/remove_category/:id",
+  verifyUser,
+  verifyAdminRole,
+  (req, res) => {
+    const sql = "DELETE FROM category WHERE id = (?)";
+    con.query(sql, [req.params.id], (err, result) => {
+      if (err) {
+        // Vérifier le code d'erreur MySQL
+        if (err.errno === 1451) {
+          // Code 1451 : contrainte de clé étrangère (RESTRICT)
+          return res.json({
+            Status: false,
+            ErrorMessage:
+              "Impossible de supprimer cette catégorie car elle est référencée par d'autres éléments.",
+          });
+        }
+
+        // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
         return res.json({
           Status: false,
           ErrorMessage:
-            "Impossible de supprimer cette catégorie car elle est référencée par d'autres éléments.",
+            "Une erreur s'est produite lors de la suppression de la catégorie.",
         });
       }
 
-      // Pour toute autre erreur, renvoyer l'erreur SQL générique ou un message d'erreur personnalisé
-      return res.json({
-        Status: false,
-        ErrorMessage:
-          "Une erreur s'est produite lors de la suppression de la catégorie.",
-      });
-    }
-
-    return res.json({ Status: true });
-  });
-});
+      return res.json({ Status: true });
+    });
+  }
+);
 
 router.get("/category", verifyUser, (req, res) => {
   const sql = "SELECT * FROM category";
@@ -497,12 +523,22 @@ router.put("/update_equipement", verifyUser, verifyAdminRole, (req, res) => {
 });
 
 router.delete(
-  "/remove_equipement/",
+  "/remove_equipement/:id",
   verifyUser,
   verifyAdminRole,
-  (req, res) => {
+  async (req, res) => {
+    const equipementId = req.params.id;
+
+    //** VERIFIER QUE L EQUIPEMENT N EST PAS ATTRIBUE */
+    const equipement = await getEquipementById(equipementId);
+    if (equipement.employee_id !== null)
+      return res.json({
+        Status: false,
+        Error: "L'équipement est encore affecté à un utilisateur",
+      });
+
     const sql = "DELETE FROM equipement WHERE id = (?)";
-    con.query(sql, [req.body.id], (err, result) => {
+    con.query(sql, [equipementId], (err, result) => {
       if (err) return res.json({ Status: false, Error: err });
       return res.json({ Status: true });
     });
