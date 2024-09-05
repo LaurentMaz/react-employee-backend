@@ -580,7 +580,7 @@ router.get("/searchEquipement", verifyUser, verifyAdminRole, (req, res) => {
 
 router.get("/conges_pending", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
-    "SELECT conges.id,conges.status, DATE_FORMAT(conges.startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(conges.endDate, '%d/%m/%Y') AS endDate, conges.reason, conges.businessDays, CONCAT(employee.firstName, ' ', employee.lastName) AS employeeId from conges LEFT JOIN employee ON conges.employeeId = employee.id WHERE status = ?";
+    "SELECT conges.id,conges.status, DATE_FORMAT(conges.startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(conges.endDate, '%d/%m/%Y') AS endDate, conges.reason, conges.businessDays, CONCAT(employee.firstName, ' ', employee.lastName) AS employeeFullName from conges LEFT JOIN employee ON conges.employeeId = employee.id WHERE status = ?";
   con.query(sql, ["En cours"], (err, result) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
@@ -589,7 +589,7 @@ router.get("/conges_pending", verifyUser, verifyAdminRole, (req, res) => {
 
 router.get("/congesAll", verifyUser, verifyAdminRole, (req, res) => {
   const sql =
-    "SELECT conges.id,conges.status, DATE_FORMAT(conges.startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(conges.endDate, '%d/%m/%Y') AS endDate, conges.reason, conges.businessDays, CONCAT(employee.firstName, ' ', employee.lastName) AS employeeId from conges LEFT JOIN employee ON conges.employeeId = employee.id ORDER BY startDate";
+    "SELECT conges.id,conges.status, DATE_FORMAT(conges.startDate, '%d/%m/%Y') AS startDate, DATE_FORMAT(conges.endDate, '%d/%m/%Y') AS endDate, conges.reason, conges.businessDays, CONCAT(employee.firstName, ' ', employee.lastName) AS employeeFullName from conges LEFT JOIN employee ON conges.employeeId = employee.id ORDER BY startDate";
   con.query(sql, (err, result) => {
     if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
