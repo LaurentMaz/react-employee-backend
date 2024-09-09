@@ -1,5 +1,6 @@
 import express from "express";
-import con from "../utils/db.js";
+import pool from "../utils/db.js";
+const con = pool;
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import {

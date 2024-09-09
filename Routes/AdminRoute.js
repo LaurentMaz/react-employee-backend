@@ -1,5 +1,6 @@
 import express from "express";
-import con from "../utils/db.js";
+import pool from "../utils/db.js";
+const con = pool;
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
@@ -318,26 +319,26 @@ router.get("/employee", verifyUser, verifyAdminRole, (req, res) => {
   });
 });
 
-router.get("/searchEmployee", verifyUser, verifyAdminRole, (req, res) => {
-  const searchValue = req.query.searchValue;
-  let sql = "";
-  if (searchValue !== "") {
-    sql =
-      "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id WHERE employee.firstName LIKE ? OR employee.lastName LIKE ? OR employee.email LIKE ?";
-  } else {
-    sql =
-      "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id";
-  }
+// router.get("/searchEmployee", verifyUser, verifyAdminRole, (req, res) => {
+//   const searchValue = req.query.searchValue;
+//   let sql = "";
+//   if (searchValue !== "") {
+//     sql =
+//       "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id WHERE employee.firstName LIKE ? OR employee.lastName LIKE ? OR employee.email LIKE ?";
+//   } else {
+//     sql =
+//       "SELECT employee.*, category.name AS category_name  FROM employee LEFT JOIN category ON employee.category_id = category.id";
+//   }
 
-  con.query(
-    sql,
-    [`%${searchValue}%`, `%${searchValue}%`, `%${searchValue}%`],
-    (err, result) => {
-      if (err) return res.json({ Status: false, Error: err });
-      return res.json({ Status: true, Result: result });
-    }
-  );
-});
+//   con.query(
+//     sql,
+//     [`%${searchValue}%`, `%${searchValue}%`, `%${searchValue}%`],
+//     (err, result) => {
+//       if (err) return res.json({ Status: false, Error: err });
+//       return res.json({ Status: true, Result: result });
+//     }
+//   );
+// });
 
 router.get("/employeesNoAdmin", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT * from employee WHERE isAdmin = ? ORDER BY lastName ASC";
