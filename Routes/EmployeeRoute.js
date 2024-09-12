@@ -83,7 +83,9 @@ router.post("/employeelogin", (req, res) => {
             "jwt_secret_key", // ADD TO ENV SECRET KEY !!
             { expiresIn: "30m" }
           );
-          res.cookie("token", token);
+          res.cookie("token", token, {
+            httpOnly: true,
+          });
           return res.json({ loginStatus: true, id: result[0].id });
         } else {
           return res.json({

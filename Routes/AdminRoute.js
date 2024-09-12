@@ -87,7 +87,9 @@ router.post("/adminlogin", (req, res) => {
                 { expiresIn: "30m" }
               );
 
-              res.cookie("token", token);
+              res.cookie("token", token, {
+                httpOnly: true,
+              });
               return res.json({ loginStatus: true, id: result[0].id });
             } else {
               return res.json({
