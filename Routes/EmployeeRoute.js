@@ -16,6 +16,13 @@ const router = express.Router();
  * FUNCTIONS GLOBALES
  */
 
+// export function fizzBuzz(n) {
+//   if (n % 3 === 0 && n % 5 === 0) return "FizzBuzz";
+//   if (n % 3 === 0) return "Fizz";
+//   if (n % 5 === 0) return "Buzz";
+//   return n.toString();
+// }
+
 // Fonction pour vérifier si un jour est un jour ouvrable (lundi-vendredi)
 function isBusinessDay(date) {
   const dayOfWeek = date.isoWeekday(); // 1 (lundi) à 5 (vendredi)
@@ -23,7 +30,7 @@ function isBusinessDay(date) {
 }
 
 // Fonction pour calculer les jours ouvrables entre deux dates
-function countBusinessDays(startDate, endDate) {
+export function countBusinessDays(startDate, endDate) {
   let count = 0;
   let currentDate = moment(startDate); // Crée un clone pour ne pas modifier l'original
 
