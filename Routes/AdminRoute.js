@@ -84,7 +84,7 @@ router.post("/adminlogin", (req, res) => {
                   id: id,
                 },
                 "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-                { expiresIn: "30m" }
+                { expiresIn: "2h" }
               );
 
               res.cookie("token", token, {
@@ -361,7 +361,7 @@ router.get("/employee_count", (req, res) => {
 router.get("/salary_count", verifyUser, verifyAdminRole, (req, res) => {
   const sql = "SELECT sum(salary) as salary FROM employee";
   con.query(sql, (err, result) => {
-    if (err) return res.json({ Status: false, Error: "Query error" });
+    if (err) return res.json({ Status: false, Error: err });
     return res.json({ Status: true, Result: result });
   });
 });

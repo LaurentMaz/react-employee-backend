@@ -88,7 +88,7 @@ router.post("/employeelogin", (req, res) => {
               id: id,
             },
             "jwt_secret_key", // ADD TO ENV SECRET KEY !!
-            { expiresIn: "30m" }
+            { expiresIn: "2h" }
           );
           res.cookie("token", token, {
             httpOnly: true,
@@ -312,5 +312,30 @@ router.delete(
     });
   }
 );
+
+// *************** //
+// HANDLE TICKETS //
+// *************** //
+
+router.post("/add_ticket", verifyUser, (req, res) => {
+  const userIdFromToken = req.userId;
+
+  const sql =
+    "INSERT INTO tickets (`titre`, `details`, `service`, `statut`, `id_machine`, `id_employee`, `urgence`, `emp_related`) VALUES (?)";
+  const params = [
+    req.body.title,
+    req.body.details,
+    req.body.service,
+    req.body.status,
+    req.body.id_machine,
+    userIdFromToken,
+    req.body.urgence,
+    req.body.emp_related,
+  ];
+  con.query(sql, [params], (err, result) => {
+    if (err) return res.status(500).json({ Status: false, Error: err });
+    return res.json({ Status: true });
+  });
+});
 
 export { router as employeeRouter };
