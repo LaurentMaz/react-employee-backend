@@ -322,11 +322,20 @@ router.delete(
 router.get("/tickets/", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
 
-  const sql = "SELECT * from tickets WHERE employee_id = ?";
-  con.query(sql, [userIdFromToken], (err, result) => {
-    if (err) return res.status(500).json({ Status: false, Error: err });
-    return res.json({ Status: true, Result: result });
-  });
+  const sql = `SELECT tickets.titre, tickets.details, tickets.statut, tickets.urgence, category.name AS service, equipement.name AS id_machine, employee.firstName AS emp_related
+  FROM tickets
+  LEFT JOIN category ON tickets.service = category.id
+  LEFT JOIN equipement ON tickets.id_machine = equipement.id  
+  LEFT JOIN employee ON tickets.emp_related = employee.id  
+  WHERE id_employee = ? AND (tickets.statut = ? OR tickets.statut = ? OR tickets.statut = ? OR tickets.statut = ?)`;
+  con.query(
+    sql,
+    [userIdFromToken, "En cours", "Bloqué", "Rejeté", "En attente"],
+    (err, result) => {
+      if (err) return res.status(500).json({ Status: false, Error: err });
+      return res.json({ Status: true, Result: result });
+    }
+  );
 });
 
 router.post(
