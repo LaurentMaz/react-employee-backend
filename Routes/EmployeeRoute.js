@@ -9,6 +9,8 @@ import {
   verifyUser,
 } from "../utils/authMiddleware.js";
 import moment from "moment";
+import multer from "multer";
+const upload = multer();
 
 const router = express.Router();
 
@@ -317,25 +319,39 @@ router.delete(
 // HANDLE TICKETS //
 // *************** //
 
-router.post("/add_ticket", verifyUser, (req, res) => {
+router.get("/tickets/", verifyUser, verifyEmployeeRole, (req, res) => {
   const userIdFromToken = req.userId;
 
-  const sql =
-    "INSERT INTO tickets (`titre`, `details`, `service`, `statut`, `id_machine`, `id_employee`, `urgence`, `emp_related`) VALUES (?)";
-  const params = [
-    req.body.title,
-    req.body.details,
-    req.body.service,
-    req.body.status,
-    req.body.id_machine,
-    userIdFromToken,
-    req.body.urgence,
-    req.body.emp_related,
-  ];
-  con.query(sql, [params], (err, result) => {
+  const sql = "SELECT * from tickets WHERE employee_id = ?";
+  con.query(sql, [userIdFromToken], (err, result) => {
     if (err) return res.status(500).json({ Status: false, Error: err });
-    return res.json({ Status: true });
+    return res.json({ Status: true, Result: result });
   });
 });
+
+router.post(
+  "/add_ticket",
+  upload.none(),
+  verifyUser,
+  verifyEmployeeRole,
+  (req, res) => {
+    const userIdFromToken = req.userId;
+
+    const sql =
+      "INSERT INTO tickets (`titre`, `details`, `service`, `id_machine`, `id_employee`, `urgence`) VALUES (?)";
+    const params = [
+      req.body.titre,
+      req.body.details,
+      parseInt(req.body.service),
+      parseInt(req.body.id_machine),
+      parseInt(userIdFromToken),
+      req.body.urgence,
+    ];
+    con.query(sql, [params], (err, result) => {
+      if (err) return res.status(500).json({ Status: false, Error: err });
+      return res.json({ Status: true });
+    });
+  }
+);
 
 export { router as employeeRouter };
